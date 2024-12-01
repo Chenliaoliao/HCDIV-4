@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Singapore Population Choropleth</title>
+  <title>Singapore Population by Subdistrict (2023)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,24 +24,56 @@
       font-size: 12px;
       pointer-events: none;
     }
+
+    #legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: white;
+      padding: 10px;
+      border: 1px solid black;
+    }
+
+    #legend div {
+      display: flex;
+      align-items: center;
+    }
+
+    #legend div span {
+      margin-left: 5px;
+    }
+
+    #legend .color-box {
+      width: 20px;
+      height: 10px;
+    }
+
   </style>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <h1>Singapore Population by Subdistrict (2023)</h1>
   <div id="tooltip"></div>
+
+  <div id="legend">
+    <strong>Population</strong>
+    <div><div class="color-box" style="background: #f0f8ff;"></div><span>Low</span></div>
+    <div><div class="color-box" style="background: #6495ed;"></div><span>Medium</span></div>
+    <div><div class="color-box" style="background: #1e3a8a;"></div><span>High</span></div>
+  </div>
+
   <svg></svg>
+
   <script>
     const width = 1000, height = 600;
-
     const svg = d3.select("svg")
       .attr("width", width)
       .attr("height", height);
 
     // Load the GeoJSON and population data
     Promise.all([
-      d3.json("data/sgmap.json"),  // 替换为你实际的GeoJSON文件路径
-      d3.csv("data/population2023.csv") // 替换为你实际的CSV文件路径
+      d3.json("https://raw.githubusercontent.com/Chenliaoliao/HCDIV-4/main/sgmap.json"), 
+      d3.csv("https://raw.githubusercontent.com/Chenliaoliao/HCDIV-4/main/population2023.csv")
     ]).then(([geoData, populationData]) => {
       // Merge population data with GeoJSON
       geoData.features.forEach(feature => {
@@ -64,49 +96,38 @@
       const path = d3.geoPath().projection(projection);
 
       // Draw the map
-      svg.selectAll("path")
-        .data(geoData.features)
-        .enter()
-        .append("path")
-        .attr("d", path)
-        .attr("fill", d => colorScale(d.properties.Population))
-        .attr("stroke", "black")
-        .on("mouseover", (event, d) => {
-          d3.select("#tooltip")
-            .style("visibility", "visible")
-            .text(`${d.properties.Name}: ${d.properties.Population}`);
-        })
-        .on("mousemove", event => {
-          d3.select("#tooltip")
-            .style("top", `${event.pageY}px`)
-            .style("left", `${event.pageX + 10}px`);
-        })
-        .on("mouseout", () => {
-          d3.select("#tooltip").style("visibility", "hidden");
-        });
+      function updateMap() {
+        svg.selectAll("path")
+          .data(geoData.features)
+          .join("path")
+          .attr("d", path)
+          .attr("fill", d => {
+            const population = d.properties.Population;
+            if (population === 0) {
+              return "#2f2f2f"; // Dark gray for areas with no population
+            }
+            return colorScale(population);
+          })
+          .attr("stroke", "black")
+          .attr("stroke-width", 0.5)
+          .on("mouseover", (event, d) => {
+            const population = d.properties.Population;
+            d3.select("#tooltip")
+              .style("visibility", "visible")
+              .text(`${d.properties.Name}: ${population}`);
+          })
+          .on("mousemove", event => {
+            d3.select("#tooltip")
+              .style("top", `${event.pageY}px`)
+              .style("left", `${event.pageX + 10}px`);
+          })
+          .on("mouseout", () => {
+            d3.select("#tooltip").style("visibility", "hidden");
+          });
+      }
 
-      // Add a legend
-      const legend = svg.append("g").attr("id", "legend");
-
-      const legendScale = d3.scaleLinear()
-        .domain(populationExtent)
-        .range([0, 300]);
-
-      const legendAxis = d3.axisBottom(legendScale).ticks(5);
-
-      legend.selectAll("rect")
-        .data(d3.range(populationExtent[0], populationExtent[1], (populationExtent[1] - populationExtent[0]) / 10))
-        .enter()
-        .append("rect")
-        .attr("x", d => legendScale(d))
-        .attr("y", height - 20)
-        .attr("width", 30)
-        .attr("height", 10)
-        .attr("fill", d => colorScale(d));
-
-      legend.append("g")
-        .attr("transform", `translate(0, ${height - 10})`)
-        .call(legendAxis);
+      // Initial map render
+      updateMap();
     });
   </script>
 </body>
