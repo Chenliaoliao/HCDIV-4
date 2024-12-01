@@ -6,46 +6,59 @@
   <title>Singapore Population by Subdistrict (2023)</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
       text-align: center;
+    }
+
+    h1 {
+      color: #2a6b3f;
+      margin-top: 20px;
+      font-size: 36px;
     }
 
     svg {
       display: block;
-      margin: 0 auto;
+      margin: 30px auto;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     #tooltip {
       position: absolute;
       visibility: hidden;
       background: white;
-      border: 1px solid black;
-      padding: 5px;
-      font-size: 12px;
+      border: 1px solid #aaa;
+      padding: 8px;
+      font-size: 14px;
       pointer-events: none;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
     }
 
     #legend {
       position: absolute;
-      bottom: 20px;
+      bottom: 30px;
       left: 20px;
-      background: white;
-      padding: 10px;
-      border: 1px solid black;
-    }
-
-    #legend div {
+      width: 90%;
       display: flex;
-      align-items: center;
-    }
-
-    #legend div span {
-      margin-left: 5px;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 14px;
     }
 
     #legend .color-box {
-      width: 20px;
+      width: 200px;
       height: 10px;
+      margin: 0 5px;
+      border-radius: 1px;
+    }
+
+    .highlighted {
+      stroke: #FF69B4;
+      stroke-width: 3;
     }
 
   </style>
@@ -54,15 +67,17 @@
 <body>
   <h1>Singapore Population by Subdistrict (2023)</h1>
   <div id="tooltip"></div>
+  <svg></svg>
 
   <div id="legend">
-    <strong>Population</strong>
-    <div><div class="color-box" style="background: #f0f8ff;"></div><span>Low</span></div>
-    <div><div class="color-box" style="background: #6495ed;"></div><span>Medium</span></div>
-    <div><div class="color-box" style="background: #1e3a8a;"></div><span>High</span></div>
+    <div><span>0</span><div class="color-box" style="background: #e5f5e0;"></div></div>
+    <div><span>20,000</span><div class="color-box" style="background: #a1d99b;"></div></div>
+    <div><span>40,000</span><div class="color-box" style="background: #31a354;"></div></div>
+    <div><span>60,000</span><div class="color-box" style="background: #006d2c;"></div></div>
+    <div><span>80,000</span><div class="color-box" style="background: #045f28;"></div></div>
+    <div><span>100,000</span><div class="color-box" style="background: #00441d;"></div></div>
+    <div><span>120,000</span><div class="color-box" style="background: #011a0b;"></div></div>
   </div>
-
-  <svg></svg>
 
   <script>
     const width = 1000, height = 600;
@@ -85,9 +100,10 @@
 
       const populationExtent = d3.extent(geoData.features, d => d.properties.Population);
 
-      // Define a color scale
-      const colorScale = d3.scaleSequential(d3.interpolateBlues)
-        .domain(populationExtent);
+      // Define a color scale for green gradient
+      const colorScale = d3.scaleThreshold()
+        .domain([0, 20000, 40000, 60000, 80000, 100000, 120000])
+        .range(["#e5f5e0", "#a1d99b", "#31a354", "#006d2c", "#045f28", "#00441d", "#011a0b"]);
 
       // Define the projection and path generator
       const projection = d3.geoMercator()
@@ -103,10 +119,8 @@
           .attr("d", path)
           .attr("fill", d => {
             const population = d.properties.Population;
-            if (population === 0) {
-              return "#2f2f2f"; // Dark gray for areas with no population
-            }
-            return colorScale(population);
+            // Set white color for regions with population 0
+            return population === 0 ? "#FFFFFF" : colorScale(population);
           })
           .attr("stroke", "black")
           .attr("stroke-width", 0.5)
@@ -115,14 +129,17 @@
             d3.select("#tooltip")
               .style("visibility", "visible")
               .text(`${d.properties.Name}: ${population}`);
+            d3.select(event.target)
+              .classed("highlighted", true); // Highlight border on hover
           })
           .on("mousemove", event => {
             d3.select("#tooltip")
               .style("top", `${event.pageY}px`)
               .style("left", `${event.pageX + 10}px`);
           })
-          .on("mouseout", () => {
+          .on("mouseout", (event) => {
             d3.select("#tooltip").style("visibility", "hidden");
+            d3.select(event.target).classed("highlighted", false); // Remove highlight
           });
       }
 
